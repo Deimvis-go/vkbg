@@ -2,29 +2,14 @@ package vkbg
 
 import (
 	"fmt"
+
+	"github.com/Deimvis/go-ext/go1.25/ext"
 )
 
 type IdempotencyVerifier interface {
 	Verify(c *Context, idempotencyKey string) (bool, error)
 	Submit(c *Context, idempotencyKey string) error
 	Rollback(c *Context, idempotencyKey string) error
-}
-
-// onPanicRollback runs rollback if code is panicking and re-panics.
-// It must be called directly via defer.
-func onPanicRollback(rollback func() error) {
-	if r := recover(); r != nil {
-		err := rollback()
-		if err != nil {
-			switch rr := r.(type) {
-			case error:
-				r = fmt.Errorf("%w\nwDuring handling of the above exception, another exception occurred:\n%w", rr, err)
-			default:
-				r = fmt.Errorf("panic(%v)\nwDuring handling of the above exception, another exception occurred:\n%w", rr, err)
-			}
-		}
-		panic(r)
-	}
 }
 
 func WithIdempotency(key string, iv IdempotencyVerifier) TaskMiddlewareFn {
@@ -39,7 +24,7 @@ func WithIdempotency(key string, iv IdempotencyVerifier) TaskMiddlewareFn {
 			}
 			return nil
 		}
-		defer onPanicRollback(func() error { return iv.Rollback(c, key) })
+		defer ext.OnPanicX(func(any) error { return iv.Rollback(c, key) })
 		err = next(c)
 		if err != nil {
 			rErr := iv.Rollback(c, key)

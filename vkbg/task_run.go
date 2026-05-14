@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/Deimvis/go-ext/go1.25/xcheck/xmust"
 )
 
 type TaskRunLog struct {
@@ -24,9 +25,7 @@ func NewTaskRunLog(c *Context, event string, keysAndValues ...interface{}) *Task
 		key := keysAndValues[i]
 		value := keysAndValues[i+1]
 		keyStr, ok := key.(string)
-		if !ok {
-			panic(fmt.Errorf("key `%v` has type %T, but string expected", key, key))
-		}
+		xmust.True(ok, "key `%v` has type %T, but string expected", key, key)
 		ctx[keyStr] = value
 	}
 	log := &TaskRunLog{

@@ -5,6 +5,7 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/Deimvis-go/logs/logs"
 	"go.uber.org/zap"
 )
 
@@ -14,16 +15,18 @@ import (
 // when possible (e.g. middleware providing some value into context)
 
 func WithLogger(zapLg *zap.SugaredLogger) TaskMiddlewareFn {
+	// TODO: optionalize context logging
+	lg := logs.ZapAsKVCtxLogger(zapLg)
 	return func(c *Context, next TaskAction) error {
-		zapLg.Infow("Task run started", "task_id", c.TaskId(), "start_ts", c.RunStartTime().Unix())
+		lg.Info(c, "Task run started", "task_id", c.TaskId(), "start_ts", c.RunStartTime().Unix())
 		err := next(c)
 		if err != nil {
-			zapLg.Errorw("Task run failed", "task_id", c.TaskId(), "error", err, "stack", c.ErrorStack())
+			lg.Error(c, "Task run failed", "task_id", c.TaskId(), "error", err, "stack", c.ErrorStack())
 		} else {
 			if c.Aborted() {
-				zapLg.Infow("Task run aborted", "task_id", c.TaskId(), "reason", c.AbortReason())
+				lg.Info(c, "Task run aborted", "task_id", c.TaskId(), "reason", c.AbortReason())
 			} else {
-				zapLg.Infow("Task run completed", "task_id", c.TaskId(), "start_ts", c.RunStartTime().Unix())
+				lg.Info(c, "Task run completed", "task_id", c.TaskId(), "start_ts", c.RunStartTime().Unix())
 			}
 		}
 		return err
